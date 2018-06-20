@@ -1,0 +1,6 @@
+-I../projects/timer-interrupt/inc
+-I../modules/lpc4337_m4/sapi/inc
+-I../modules/lpc4337_m4/base/inc
+-I../modules/lpc4337_m4/board/inc
+-I../modules/lpc4337_m4/chip/inc
+-I../modules/lpc4337_m4/chip/inc/usbd
