@@ -7,7 +7,6 @@
 
 /* * variables globales */
 uint8_t timer_counter = 0;
-isCalc = OFF;
 
 /* * funciones locales */
 /* ** changeLedState */
@@ -23,72 +22,106 @@ void checkTECStatus(gpioMap_t TEC) {
   }
 }
 /* ** scanTec */
+/* Funcion que determina que caracter del teclado */
+/* matricial esta activado */
 char *scanTec(void) {
+  char *ptr_digito = "\0";
   for (uint8_t i = 0; i < 4; ++i) {
     gpioWrite(columnas[i], ON);
     for (uint8_t j = 0; j < 4; ++j) {
+      /* uartWriteString(UART_USB, "\nEn la fn"); */
       if (gpioRead(filas[j])) {
-        uartWriteString(UART_USB, "\n Presionado: ");
-        uartWriteString(UART_USB, "\t");
-        char *ptr_digitos = &(teclado_digitos[j][i]);
+        ptr_digito = &(teclado_digitos[j][i]);
         char str[2] = "\0";
-        str[0] = *ptr_digitos;
+        str[0] = *ptr_digito;
         uartWriteString(UART_USB, str);
-        calc(ptr_digitos);
         /* espero a que se deje de presionar el digito */
         while (gpioRead(filas[j])) {
           delay(100);
         }
-
-        return ptr_digitos;
       }
     }
+    gpioWrite(columnas[i], OFF);
   }
+  return ptr_digito;
 }
 
 /* ** cycleLeds */
-void) cycleLEDs(gpioMap_t LED) {
+void cycleLEDs(gpioMap_t LED) {
   for (gpioMap_t i = LEDR; i <= LED; i++) {
     changeLedState(i);
   }
 }
-/* ** getDigit */
-void getDigit(uint8_t nro) {
-  uint16_t valor = 0;
+/* ** getNumber */
+/* Funcion para obtener los tres digitos que componen un numero */
+/* Toma como argumento la cantidad de digitos y devuelve el numero */
+uint32_t getNumber(uint8_t nro) {
+  uint32_t valor = 0;
   uint8_t contador = 0;
+  char *valor_leido ="\0";
+  char *debug_buffer[50];
+
   while (contador < nro) {
-    if (gpioRead(filas[0]) || gpioRead(filas[1]) || gpioRead(filas[2]) ||
-        gpioRead(filas[3])){
-      contador += 1;
-      valor_leido = 
-      valor = valor + valor_leido*potencias[i];
-    }
+    /* uartWriteString(UART_USB, "\nValor leido: "); */
+    /* uartWriteString(UART_USB, itoa((uint8_t)*valor_leido, debug_buffer,10)); */
+    /* me aseguro de que lea solo un valor numerico */
+    do{
+      valor_leido = scanTec();
+    }while ((uint8_t)*valor_leido < 48 || (uint8_t)*valor_leido > 57);
+    valor = valor + (*valor_leido - 48)*potencias[nro - contador - 1];
+    contador += 1;
   }
+  return valor;
 }
 /* ** cycleLeds */
 void calc(char *ptr_digito) {
-  uint8_t operando1 = 0;
-  uint8_t operando2 = 0;
+  uint32_t operando1 = 0;
+  uint32_t operando2 = 0;
+  char debug_buffer[50];
   switch (*ptr_digito) {
-  case 'A': {
-    uartWriteString(UART_USB, "\n Modo suma: \t");
-    getDigit(NUM_DIGITOS);
+  /* suma */
+  case 'A': {  
+    uartWriteString(UART_USB, "\n ** Modo suma ** \n");
+    operando1 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " + ");
+    operando2 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " = ");
+    uartWriteString(UART_USB, itoa(operando1+operando2, debug_buffer,10));
     break;
   }
+  /* resta */
   case 'B': {
-    uartWriteString(UART_USB, "\n Modo resta: \t");
+    uartWriteString(UART_USB, "\n ** Modo resta **\n");
+    operando1 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " - ");
+    operando2 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " - ");
+    uartWriteString(UART_USB, " = ");
+    uartWriteString(UART_USB, itoa(operando1-operando2, debug_buffer,10));
     break;
   }
+    /* producto */
   case 'C': {
-    uartWriteString(UART_USB, "\n Modo producto: \t");
+    uartWriteString(UART_USB, "\n ** Modo producto **\n");
+    operando1 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " * ");
+    operando2 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " = ");
+    uartWriteString(UART_USB, itoa(operando1*operando2, debug_buffer,10));
     break;
   }
+    /* division */
   case 'D': {
-    uartWriteString(UART_USB, "\n División: \t");
+    uartWriteString(UART_USB, "\n ** Modo division **\n");
+    operando1 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " / ");
+    operando2 = getNumber(NUM_DIGITOS);
+    uartWriteString(UART_USB, " = ");
+    uartWriteString(UART_USB, itoa(operando1/operando2, debug_buffer,10));
+
     break;
   }
   case '#': {
-    isCalc = OFF;
     break;
   }
   default:
@@ -99,7 +132,7 @@ void calc(char *ptr_digito) {
 
 /* * main */
 int main(void) {
-  /* ** setup */
+/* ** setup */
   boardConfig();
   /* Inicialización variables*/
   TEC_state = false;
@@ -107,8 +140,10 @@ int main(void) {
   tickConfig(50);
   /* pongo el timer a cero */
   timer = 0;
+  /* var para guardar el digito pulsado del teclado */
+  char *digitoTeclado;
   /* Habilita el puerto serie */
-  uartConfig(UART_USB, 115200);
+  uartConfig(UART_USB, 9600);
   /* Inicializaciones de los GPIOs*/
   for (uint8_t i = 0; i < 7; i++) {
     gpioConfig(lut7segmentos[i], GPIO_OUTPUT);
@@ -125,7 +160,7 @@ int main(void) {
   /* interrupciones */
   /* tickCallbackSet(printStatus, NULL); */
 
-  /* ** bucle infinito */
+/* ** bucle infinito */
   while (TRUE) {
 
 /* *** decoder-7-segmentos */
@@ -141,32 +176,12 @@ int main(void) {
     }
 
 /* *** control-teclado */
-    for (uint8_t i = 0; i < 4; ++i) {
-      gpioWrite(columnas[i], ON);
-      for (uint8_t j = 0; j < 4; ++j) {
-        if (gpioRead(filas[j]) && !isCalc) {
-          uartWriteString(UART_USB, "\n Presionado: ");
-          uartWriteString(UART_USB, "\t");
-          char *ptr_digitos = &(teclado_digitos[j][i]);
-          char str[2] = "\0";
-          str[0] = *ptr_digitos;
-          uartWriteString(UART_USB, str);
-          calc(ptr_digitos);
-          /* espero a que se deje de presionar el digito */
-          while( gpioRead(filas[j])){
-            delay(100);
-          }
-          /* paso el control a la rutina de calculos */
-
-          if ((uint8_t)*ptr_digitos > 64 && (uint8_t)*ptr_digitos <69) {
-            uartWriteString(UART_USB, "\nOperación : ");
-            calc(ptr_digitos);
-          }
-          
-          isCalc = OFF;
-        }
-      }
-      gpioWrite(columnas[i], OFF);
+    digitoTeclado = scanTec();
+    /* paso el control a la rutina de calculos */
+    if ((uint8_t)*digitoTeclado > 64 && (uint8_t)*digitoTeclado <69) {
+      uartWriteString(UART_USB, "\nIngresando modo calculadora");
+      calc(digitoTeclado);
     }
+          
   }
 }

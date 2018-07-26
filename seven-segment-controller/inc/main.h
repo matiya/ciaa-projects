@@ -74,7 +74,7 @@ static const char teclado_digitos[4][4] = {{'#', 'D', '0', '*'}, // 1ra fila
                                            {'9', 'C', '8', '7'}, // 2da fila
                                            {'6', 'B', '5', '4'},
                                            {'3', 'A', '2', '1'}};
-  static const uint8_t potencias = {1, 10, 100, 1000};
+ static const uint16_t potencias[4] = {1, 10, 100, 1000};
 /*==================[external functions declaration]=========================*/
 
 /** @brief main function
