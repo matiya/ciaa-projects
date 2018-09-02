@@ -10,10 +10,10 @@
 static FATFS fs;           // <-- FatFs work area needed for each volume
 static FIL fp;             // <-- File object needed for each open file
 /* * funciones locales */
-/* ** showDateAndTime */
+/* ** printDateAndTime */
 uint8_t printDateAndTime(rtc_t *config, char buffer[30]) {
   uartWriteString(UART_USB, "\n[");
-  sprintf(buffer, "%d-%d-%d %d:%d:%d", config->year, config->month,
+  sprintf(buffer, "%d-%d %d:%d:%d", config->month,
           config->mday, config->hour, config->min, config->sec);
   uartWriteString(UART_USB, buffer);
   uartWriteString(UART_USB, "]");
@@ -65,57 +65,51 @@ static void format( float valor, char *dst, uint8_t pos ){
 
 
 /* ** printDataLCD */
-printDataLCD(enum simbolos simbolo, float dato){
-  char buffLCD[30] = "";
-  format( dato, buffLCD, 0);
-  for (uint8_t i = 0; i < 8; i++){
-    lcdCreateChar(i,temperatura[0].bitmap);
-    lcdDelay_ms(199);
-    delay(200);
-    lcdData(i);
-  }
-switch (simbolo) {
- case temp: {
+printDataLCD(float temp, float hum, char * hora){
+
+   /* convertir dato a string */
+   char buffTemp[10] = "";
+   char buffHum[10] = "";
+   format(temp, buffTemp, 0);
+   format(hum, buffHum, 0);
+
    /* cargar en memoria simbolos LCD */
-   /* lcdCreateChar( 0, temp1 ); */
-   /* lcdCreateChar(1, temp2); */
-   /* lcdCreateChar(2, temp3); */
-   /* lcdCreateChar(3, temp4); */
-   /* lcdCreateChar(4, temp5); */
-   /* lcdCreateChar(5, temp6); */
-   /* lcdClear(); */
-   /* lcdDelay_ms(199); */
-   /* lcdGoToXY( 1, 1 ); // Poner cursor en 1, 1 */
-   /* lcdData(0); */
-   /* delay(1000); */
-   /* lcdData(1); */
-   /* lcdCreateChar(6, temp7); */
-   /* rotar por las animaciones */
-   /* for (uint8_t i = 0; i < 2; ++i) { */
-     /* lcdData(i); */
-     /* lcdData(0); */
-   /* } */
-   /* imprimir dato */
-    lcdSendStringRaw(buffLCD);
-   break;
- }
- case hum: {
-   /* cargar en memoria simbolos LCD */
-   /* rotar por las animaciones */
-   /* imprimir dato */
-   break;
- }
- case time: {
-   /* cargar en memoria simbolos LCD */
-   /* rotar por las animaciones */
-   /* imprimir dato */
-   break;
- }
-default:
-  lcdSendStringRaw("ERROR");
-   break;
- }
+   for (uint8_t i = 0; i < 6; i++){
+     lcdCreateChar(i,simbolos[i]);
+   }
+   lcdClear();
+
+   /* imprimir temperatura */
+   lcdGoToXY(1,1);
+   lcdData(2);
+   /* lcdDelay_ms(200); */
+   lcdSendStringRaw(" ");
+   lcdSendStringRaw(buffTemp);
+
+   /* imprimir humedad */
+   lcdGoToXY(8,1);
+   lcdData(0);
+   /* lcdDelay_ms(200); */
+   lcdSendStringRaw(" ");
+   lcdSendStringRaw(buffHum);
+
+   /* imprimir fecha y hora */
+   lcdGoToXY(1,2);
+   lcdData(4);
+   /* lcdDelay_ms(200); */
+   lcdSendStringRaw(" ");
+   lcdSendStringRaw(hora);
+
+   lcdDelay_ms(500);
+   /* actualizar iconos */
+   lcdGoToXY(1,1);
+   lcdData(3);
+   lcdGoToXY(8,1);
+   lcdData(1);
+   lcdGoToXY(1,2);
+   lcdData(5);
 }
+
 /* * main */
 int main(void) {
 /* ** setup */
@@ -150,18 +144,16 @@ int main(void) {
   while (TRUE) {
     rtcRead(&config);
     printDateAndTime(&config, buffer);
+    uartWriteString(UART_USB, buffer);
     /* writeToFS(buffer); */
-    delay(500);
     dht11Read( &humedad, &temperatura);
-    lcdClear();
-    printDataLCD(temp, temperatura);
+    printDataLCD(temperatura, humedad, buffer);
+    /* sprintf(buffer, " %d:%d", config.hour, config.min); */
     format(temperatura, buffer, 0);
-    lcdGoToXY(1, 2); 
     printf(" temp: %s \t", buffer);
     format(humedad, buffer, 0);
     printf("hum: %s\n", buffer);
-    /* debugPrintString(buffer); */
-    delay(1000);
+    delay(500);
   }
 }
 
